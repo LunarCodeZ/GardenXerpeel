@@ -6,7 +6,7 @@ import multer from 'multer';
 import QRCode from 'qrcode';
 import sharp from 'sharp';
 import { DatabaseSync } from 'node:sqlite';
-import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { mkdirSync, existsSync } from 'node:fs';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
@@ -168,6 +168,7 @@ export async function createApp(options = {}) {
   const expectedOrigin = normaliseOrigin(appUrl);
   const isProduction = (options.nodeEnv || process.env.NODE_ENV) === 'production';
   const trustProxy = options.trustProxy ?? process.env.TRUST_PROXY === '1';
+  const sessionSecret = options.sessionSecret || process.env.SESSION_SECRET || 'digital-garden-mvp-session-secret-change-me';
   const uploadsDir = path.join(dataDir, 'uploads');
   const staticDir = options.staticDir ? path.resolve(options.staticDir) : null;
 
@@ -236,7 +237,46 @@ export async function createApp(options = {}) {
     }
   }
 
-  const sessions = new Map();
+  const adminCount = Number(db.prepare('SELECT COUNT(*) AS n FROM admins').get().n || 0);
+  if (adminCount === 0) {
+    const email = String(options.admin?.email || process.env.ADMIN_EMAIL || 'admin@digitalgarden.local')
+      .trim()
+      .toLowerCase();
+    const password = String(options.admin?.password || process.env.ADMIN_PASSWORD || 'Kokulikuler2026!');
+    if (email && password.length >= 8) {
+      const stamp = nowIso();
+      db.prepare(`
+        INSERT INTO admins (name, email, password_hash, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).run('Admin Digital Garden', email, hashPassword(password), stamp, stamp);
+    }
+  }
+
+  function encodeSession(session) {
+    const payload = Buffer.from(JSON.stringify(session)).toString('base64url');
+    const signature = createHmac('sha256', sessionSecret).update(payload).digest('base64url');
+    return `${payload}.${signature}`;
+  }
+
+  function decodeSession(token) {
+    if (!token || typeof token !== 'string') return null;
+    const [payload, signature] = token.split('.');
+    if (!payload || !signature) return null;
+    const expected = createHmac('sha256', sessionSecret).update(payload).digest('base64url');
+    if (signature.length !== expected.length
+      || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+      return null;
+    }
+    try {
+      const session = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+      if (!session || !Number.isFinite(session.expiresAt) || session.expiresAt < Date.now()) return null;
+      if (!Number.isInteger(session.adminId) || typeof session.csrf !== 'string' || !session.csrf) return null;
+      return session;
+    } catch {
+      return null;
+    }
+  }
+
   const app = express();
   app.disable('x-powered-by');
   if (trustProxy) app.set('trust proxy', 1);
@@ -262,14 +302,8 @@ export async function createApp(options = {}) {
 
   function sessionFromRequest(req) {
     const token = req.cookies?.[SESSION_COOKIE];
-    if (!token) return null;
-    const session = sessions.get(token);
-    if (!session) return null;
-    if (session.expiresAt < Date.now()) {
-      sessions.delete(token);
-      return null;
-    }
-    return { token, ...session };
+    const session = decodeSession(token);
+    return session ? { token, ...session } : null;
   }
 
   function requireAuth(req, res, next) {
@@ -279,7 +313,6 @@ export async function createApp(options = {}) {
     }
     const admin = db.prepare('SELECT id, name, email FROM admins WHERE id = ?').get(session.adminId);
     if (!admin) {
-      sessions.delete(session.token);
       return res.status(401).json({ message: 'Sesi tidak valid. Silakan masuk kembali.' });
     }
     req.session = session;
@@ -367,9 +400,8 @@ export async function createApp(options = {}) {
     if (!admin || !verifyPassword(password, admin.password_hash)) {
       return res.status(401).json({ message: 'Email atau kata sandi salah.' });
     }
-    const token = randomBytes(32).toString('base64url');
     const csrf = randomBytes(24).toString('base64url');
-    sessions.set(token, {
+    const token = encodeSession({
       adminId: Number(admin.id),
       csrf,
       expiresAt: Date.now() + SESSION_TTL_MS,
@@ -400,7 +432,6 @@ export async function createApp(options = {}) {
   });
 
   app.post('/api/logout', ...writeGuard, (req, res) => {
-    sessions.delete(req.session.token);
     res.clearCookie(SESSION_COOKIE, { path: '/' });
     res.json({ message: 'Berhasil keluar.' });
   });
@@ -648,7 +679,6 @@ export async function createApp(options = {}) {
     dataDir,
     appUrl,
     close() {
-      sessions.clear();
       db.close();
     },
   };

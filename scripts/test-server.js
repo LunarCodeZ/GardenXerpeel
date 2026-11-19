@@ -7,7 +7,7 @@ const port = 4173;
 const host = '127.0.0.1';
 const appUrl = `http://${host}:${port}`;
 const dataDir = path.resolve('.local/test-data');
-const staticDir = path.resolve('dist');
+const staticDir = path.resolve('public');
 
 rmSync(dataDir, { recursive: true, force: true });
 

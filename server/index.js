@@ -19,7 +19,7 @@ const ctx = await createApp({
   appUrl,
   nodeEnv: process.env.NODE_ENV,
   trustProxy: process.env.TRUST_PROXY === '1',
-  staticDir: isProduction || process.env.SERVE_STATIC === '1' ? path.resolve('dist') : undefined,
+  staticDir: isProduction || process.env.SERVE_STATIC === '1' ? path.resolve('public') : undefined,
   admin,
 });
 
