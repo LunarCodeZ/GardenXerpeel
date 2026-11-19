@@ -37,7 +37,7 @@ export default function AdminPlantFormPage() {
   useEffect(() => {
     if (!isEdit) return undefined;
     let active = true;
-    api(`/api/admin/plants/${id}`)
+    api(`/api/admin-plant?id=${id}`)
       .then((payload) => {
         if (!active) return;
         const plant = payload.data;
@@ -118,13 +118,13 @@ export default function AdminPlantFormPage() {
     setSaving(status);
     try {
       const saved = isEdit
-        ? await api(`/api/admin/plants/${id}`, { method: 'PUT', body: payload })
-        : await api('/api/admin/plants', { method: 'POST', body: payload });
+        ? await api(`/api/admin-plant?id=${id}`, { method: 'PUT', body: payload })
+        : await api('/api/admin-plants', { method: 'POST', body: payload });
 
       if (file) {
         const body = new FormData();
         body.append('image', file);
-        await api(`/api/admin/plants/${saved.data.id}/image`, { method: 'POST', body });
+        await api(`/api/admin-image?id=${saved.data.id}`, { method: 'POST', body });
       }
 
       navigate('/admin/plants');

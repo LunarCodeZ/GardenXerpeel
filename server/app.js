@@ -300,6 +300,39 @@ export async function createApp(options = {}) {
   app.use(express.urlencoded({ extended: false, limit: '1mb' }));
   app.use(cookieParser());
 
+  // Vercel only routes single-segment /api/* paths reliably. Alias the nested
+  // admin endpoints to flat paths so the same Express routes can serve both.
+  app.use((req, _res, next) => {
+    const [pathname, rawQuery = ''] = req.url.split('?');
+    const params = new URLSearchParams(rawQuery);
+    const id = params.get('id');
+    let target;
+
+    if (pathname === '/api/dashboard') {
+      target = '/api/admin/dashboard';
+    } else if (pathname === '/api/plant' && params.get('slug')) {
+      target = `/api/plants/${encodeURIComponent(params.get('slug'))}`;
+      params.delete('slug');
+    } else if (pathname === '/api/admin-plants') {
+      target = '/api/admin/plants';
+    } else if (pathname === '/api/admin-plant' && id) {
+      target = `/api/admin/plants/${encodeURIComponent(id)}`;
+      params.delete('id');
+    } else if (pathname === '/api/admin-image' && id) {
+      target = `/api/admin/plants/${encodeURIComponent(id)}/image`;
+      params.delete('id');
+    } else if (pathname === '/api/admin-qr' && id) {
+      target = `/api/admin/plants/${encodeURIComponent(id)}/qr`;
+      params.delete('id');
+    }
+
+    if (target) {
+      const rest = params.toString();
+      req.url = `${target}${rest ? `?${rest}` : ''}`;
+    }
+    return next();
+  });
+
   function sessionFromRequest(req) {
     const token = req.cookies?.[SESSION_COOKIE];
     const session = decodeSession(token);

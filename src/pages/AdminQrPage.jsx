@@ -14,7 +14,7 @@ export default function AdminQrPage() {
 
   useEffect(() => {
     let active = true;
-    api('/api/admin/plants')
+    api('/api/admin-plants')
       .then((payload) => {
         if (active) setPlants(payload.data);
       })
@@ -83,7 +83,7 @@ export default function AdminQrPage() {
 
               <div className="qr-preview">
                 <img
-                  src={`/api/admin/plants/${plant.id}/qr?format=png&download=0`}
+                  src={`/api/admin-qr?id=${plant.id}&format=png&download=0`}
                   alt={`QR Code ${plant.name}`}
                   width="220"
                   height="220"
@@ -101,7 +101,7 @@ export default function AdminQrPage() {
               <div className="qr-actions">
                 <a
                   className="button secondary small"
-                  href={`/api/admin/plants/${plant.id}/qr?format=svg`}
+                  href={`/api/admin-qr?id=${plant.id}&format=svg`}
                   download={`${plant.slug}.svg`}
                 >
                   <DownloadSimple size={16} aria-hidden="true" />
@@ -109,7 +109,7 @@ export default function AdminQrPage() {
                 </a>
                 <a
                   className="button secondary small"
-                  href={`/api/admin/plants/${plant.id}/qr?format=png`}
+                  href={`/api/admin-qr?id=${plant.id}&format=png`}
                   download={`${plant.slug}.png`}
                 >
                   <DownloadSimple size={16} aria-hidden="true" />

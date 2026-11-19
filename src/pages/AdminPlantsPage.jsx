@@ -32,7 +32,7 @@ export default function AdminPlantsPage() {
     let active = true;
     setLoading(true);
     setError('');
-    api(`/api/admin/plants?q=${encodeURIComponent(debouncedQuery)}&page=${page}&limit=12`)
+    api(`/api/admin-plants?q=${encodeURIComponent(debouncedQuery)}&page=${page}&limit=12`)
       .then((payload) => {
         if (!active) return;
         setPlants(payload.data);
@@ -54,7 +54,7 @@ export default function AdminPlantsPage() {
     setDeleteBusy(true);
     setError('');
     try {
-      await api(`/api/admin/plants/${deleteTarget.id}`, { method: 'DELETE' });
+      await api(`/api/admin-plant?id=${deleteTarget.id}`, { method: 'DELETE' });
       setDeleteTarget(null);
       if (plants.length === 1 && page > 1) {
         setPage((current) => current - 1);

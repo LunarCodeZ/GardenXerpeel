@@ -14,7 +14,7 @@ export default function AdminOverviewPage() {
 
   useEffect(() => {
     let active = true;
-    api('/api/admin/dashboard')
+    api('/api/dashboard')
       .then((payload) => {
         if (active) setData(payload.data);
       })

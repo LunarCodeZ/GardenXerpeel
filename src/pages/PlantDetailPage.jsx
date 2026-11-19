@@ -31,7 +31,7 @@ export default function PlantDetailPage() {
     setLoading(true);
     setNotFound(false);
     setError('');
-    api(`/api/plants/${encodeURIComponent(slug)}`)
+    api(`/api/plant?slug=${encodeURIComponent(slug)}`)
       .then((payload) => {
         if (active) setPlant(payload.data);
       })
