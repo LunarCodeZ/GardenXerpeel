@@ -98,10 +98,72 @@ npm run backup
 
 Salinan dibuat dengan `VACUUM INTO` di `./backups`. Untuk memulihkan, hentikan server, ganti `data/garden.db` dengan file backup, lalu jalankan server kembali. Simpan folder `data/uploads` bersama backup database.
 
-## Deployment produksi
+## Deployment ke Render.com (Direkomendasikan)
 
-1. Siapkan domain HTTPS.
-2. Salin proyek dan buat `.env` produksi:
+Render.com menyediakan server Node.js yang berjalan terus-menerus dengan **Persistent Disk** sehingga database SQLite dan foto upload tidak akan pernah hilang atau reset.
+
+### Langkah-langkah deploy ke Render
+
+1. **Push kode ke GitHub** (kalau belum):
+   ```bash
+   git add .
+   git commit -m "Siap deploy ke Render"
+   git push
+   ```
+
+2. **Buat akun di [render.com](https://render.com)** lalu klik **New → Web Service**.
+
+3. **Hubungkan repositori GitHub** kamu dan pilih repo ini.
+
+4. Render akan otomatis membaca file `render.yaml`. Pastikan pengaturan berikut:
+   - **Build Command**: `npm ci && npm run build`
+   - **Start Command**: `node server/index.js`
+   - **Plan**: Free (atau Starter untuk Persistent Disk)
+
+5. **Tambahkan Persistent Disk** di tab *Disks* pada service:
+   - **Mount Path**: `/var/data`
+   - **Size**: 1 GB (cukup untuk MVP)
+
+   > ⚠️ **Penting:** Free plan Render tidak menyertakan Persistent Disk. Persistent Disk tersedia mulai paket **Starter ($7/bulan)**. Tanpa disk ini, data tetap akan reset setiap deploy. Alternatif gratis: gunakan **Railway.app** (lihat di bawah).
+
+6. **Atur Environment Variables** di dashboard Render (tab *Environment*):
+
+   | Variabel | Nilai |
+   |---|---|
+   | `NODE_ENV` | `production` |
+   | `HOST` | `0.0.0.0` |
+   | `PORT` | `3001` |
+   | `TRUST_PROXY` | `1` |
+   | `DATA_DIR` | `/var/data` |
+   | `APP_URL` | `https://nama-service-kamu.onrender.com` |
+   | `SESSION_SECRET` | *(generate random string panjang)* |
+   | `ADMIN_EMAIL` | `email-admin@contoh.id` |
+   | `ADMIN_PASSWORD` | `kata-sandi-panjang-min-8-karakter` |
+
+7. Klik **Deploy**. Render akan build dan menjalankan aplikasi otomatis.
+
+8. Setelah deploy selesai, buka URL Render kamu dan **uji**: login, unggah foto, terbitkan tanaman, lalu cek apakah foto muncul dan data tidak hilang setelah beberapa menit.
+
+9. Buat QR dari URL Render produksi. **Jangan cetak QR dari `localhost`**.
+
+---
+
+## Deployment ke Railway.app (Alternatif Gratis)
+
+Railway menyediakan Persistent Volumes gratis (dengan batasan storage).
+
+1. Daftar di [railway.app](https://railway.app) dan buat **New Project → Deploy from GitHub repo**.
+2. Tambahkan **Volume** dan mount ke `/var/data`.
+3. Atur environment variables yang sama seperti tabel di atas (ganti `APP_URL` dengan URL Railway-mu).
+4. Railway otomatis mendeteksi Node.js dan menjalankan `npm start`.
+
+---
+
+## Deployment ke VPS (Paling Fleksibel)
+
+Jika kamu punya VPS (DigitalOcean, Linode, IDCloudHost, dsb.):
+
+1. Buat `.env` produksi:
 
    ```dotenv
    NODE_ENV=production
@@ -110,17 +172,10 @@ Salinan dibuat dengan `VACUUM INTO` di `./backups`. Untuk memulihkan, hentikan s
    APP_URL=https://domain-kamu.example
    DATA_DIR=/var/lib/digital-garden
    TRUST_PROXY=1
+   SESSION_SECRET=ganti-dengan-kunci-acak-panjang
    ```
 
-   Gunakan `TRUST_PROXY=1` hanya jika ada tepat satu reverse proxy tepercaya di depan aplikasi.
-
-3. Buat akun admin:
-
-   ```bash
-   npm run admin:create -- --email admin@domain-kamu.example --password "kata-sandi-panjang"
-   ```
-
-4. Build dan jalankan:
+2. Build dan jalankan:
 
    ```bash
    npm ci --omit=dev
@@ -128,15 +183,22 @@ Salinan dibuat dengan `VACUUM INTO` di `./backups`. Untuk memulihkan, hentikan s
    npm start
    ```
 
-   Dalam mode produksi, Express menyajikan `dist/` dan menangani fallback SPA.
+3. Gunakan **PM2** agar server tetap berjalan setelah reboot:
 
-5. Arahkan reverse proxy (Nginx/Caddy) ke `127.0.0.1:3001` dan aktifkan HTTPS. Pastikan ukuran unggahan proxy minimal 5 MB.
+   ```bash
+   npm install -g pm2
+   pm2 start "node server/index.js" --name digital-garden
+   pm2 save
+   pm2 startup
+   ```
 
-6. Uji login, CRUD, unggah foto, publikasi, URL publik, dan unduhan QR dari domain produksi.
+4. Arahkan reverse proxy (Nginx/Caddy) ke `127.0.0.1:3001` dan aktifkan HTTPS.
 
-7. Buat QR dari domain produksi. Jangan mencetak QR dari `localhost`.
+5. Jadwalkan backup:
 
-8. Jadwalkan `npm run backup` dan salin hasil backup ke lokasi terpisah.
+   ```bash
+   npm run backup
+   ```
 
 `APP_URL` menentukan isi QR. Jika domain berubah setelah QR dicetak, QR lama tidak akan berfungsi. Gunakan domain final sebelum mencetak.
 

@@ -2,8 +2,10 @@ import path from 'node:path';
 import { createApp } from './app.js';
 
 const port = Number(process.env.PORT || 3001);
-const host = process.env.HOST || '127.0.0.1';
 const isProduction = process.env.NODE_ENV === 'production';
+// Di production (Render/Railway), host harus 0.0.0.0 agar bisa diakses dari luar.
+// Secara default lokal tetap 127.0.0.1.
+const host = process.env.HOST || (isProduction ? '0.0.0.0' : '127.0.0.1');
 const appUrl = process.env.APP_URL || (isProduction ? `http://${host}:${port}` : 'http://localhost:5173');
 
 const admin = process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD
