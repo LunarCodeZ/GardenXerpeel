@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: digital-garden
+    runtime: node
+    region: singapore
+    plan: free
+
+    # Build
+    buildCommand: npm ci && npm run build
+
+    # Start
+    startCommand: node server/index.js
+
+    # Persistent disk: data (database SQLite + foto upload) tidak akan hilang
+    disk:
+      name: garden-data
+      mountPath: /var/data
+      sizeGB: 1
+
+    # Environment variables (isi nilainya di Render Dashboard > Environment)
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: HOST
+        value: 0.0.0.0
+      - key: TRUST_PROXY
+        value: "1"
+      - key: DATA_DIR
+        value: /var/data
+      - key: APP_URL
+        # Ganti dengan URL Render kamu, contoh: https://digital-garden.onrender.com
+        value: https://digital-garden.onrender.com
+      - key: SESSION_SECRET
+        generateValue: true
+      # Opsional: buat akun admin otomatis saat server pertama kali start
+      # - key: ADMIN_EMAIL
+      #   value: admin@contoh.id
+      # - key: ADMIN_PASSWORD
+      #   value: katasandi-panjang

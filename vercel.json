@@ -1,0 +1,13 @@
+{
+  "$schema": "openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "buildCommand": "echo 'Frontend sudah di-build dan disimpan di public/'",
+  "installCommand": "npm ci --omit=dev",
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/admin", "destination": "/index.html" },
+    { "source": "/admin/:path*", "destination": "/index.html" },
+    { "source": "/plants", "destination": "/index.html" },
+    { "source": "/plants/:path*", "destination": "/index.html" }
+  ]
+}
